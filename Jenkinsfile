@@ -1,13 +1,18 @@
-
 pipeline {
     agent{
-            label "Slave2"
+            label "slave1"
         }
         tools {
             maven 'maven'
-            //jdk 'jdk'
+            jdk 'jdk 11'
         }
     stages {
+                stage("building"){
+            steps{
+                sh "mvn compile"
+		 
+            }
+                }
 
         stage('Testing') {
             steps {
