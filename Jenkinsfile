@@ -1,21 +1,54 @@
-pipeline {
+pipeline
+{
     agent {
-        label 'Slave2'
+        label 'slave'
     }
-    stages {
-        stage("Production") {
-            steps {
-                //echo "Production branch"
-                sh "mvn clean package"
+    tools
+    {
+        maven 'maven'
+        jdk 'jdk 11'
+    }
+    options
+    {
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '5', daysToKeepStr: '5'))
+    }
+    stages
+    {
+        stage("Cleanup")
+        {
+            steps
+            {
+                sh 'mvn clean'
+            }
+        }
+        
+        stage("Test")
+        {
+            steps
+            {
+                sh 'mvn test'
+            }
+        }
+        stage("Package")
+        {
+            steps
+            {
+                sh 'mvn package'
             }
         }
     }
-    post {
-         success {
-            echo "Packaging successful"
+    post
+    {
+       always{
+            mail to: 'deeksha.tripathi@knoldus.com',
+			subject: "Pipeline: ${currentBuild.fullDisplayName} is ${currentBuild.currentResult}",
+			body: "${currentBuild.currentResult}: Job ${env.JOB_NAME} build ${env.BUILD_NUMBER}\n More info at: ${env.BUILD_URL}"
         }
-        failure {
-            echo "Packaging unsuccessful"
+         success{
+            sh 'echo "--------------------------Deploying------------------------------"'
+            sshPublisher(publishers: [sshPublisherDesc(configName: 'production', transfers: [sshTransfer(cleanRemote: true, excludes: '', execCommand: '''cd product/target
+java -jar .jar &''', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: 'product', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '/.jar')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: true)])
         }
     }
 }
